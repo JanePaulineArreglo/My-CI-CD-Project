@@ -1,25 +1,55 @@
-name: CI Pipeline
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:  
+  name: cd-pipeline
+spec:
+  params:
+    - name: repo-url
+    - name: branch
+      default: "master"
+  tasks:
+    - name: clone
+      taskRef:
+        name: checkout
+      params:
+      - name: repo-url
+        value: "$(params.repo-url)"
+      - name: branch
+        value: "$(params.branch)"
 
-on:
-  push:
-    branches: [ main ]
+    - name: lint
+      taskRef:
+        name: echo
+      params:
+      - name: message
+        value: "Calling Flake8 linter..."
+      runAfter:
+        - clone
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    - name: tests
+      taskRef:
+        name: echo
+      params:
+      - name: message
+        value: "Running unit tests with PyUnit..."
+      runAfter:
+        - lint
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: build
+      taskRef:
+        name: echo
+      params:
+      - name: message
+        value: "Building image for $(params.repo-url) ..."
+      runAfter:
+        - tests
 
-    - name: Install dependencies
-      run: |
-        pip install flake8
+    - name: deploy
+      taskRef:
+        name: echo
+      params:
+      - name: message
+        value: "Deploying $(params.branch) branch of $(params.repo-url) ..."
+      runAfter:
+        - build
 
-    - name: Lint with flake8
-      run: |
-        echo "Skipping lint errors for now"
-
-    - name: Run unit tests
-      run: |
-        echo "No tests yet - passing"
