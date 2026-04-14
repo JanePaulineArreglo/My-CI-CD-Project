@@ -1,135 +1,32 @@
-apiVersion: tekton.dev/v1beta1
-kind: Pipeline
-metadata:  
-  name: cd-pipeline
-spec:
-  workspaces:
-    - name: pipeline-workspace
-  params:
-    - name: repo-url
-    - name: branch
-      default: master
-  tasks:
-    - name: init
-      workspaces:
-        - name: source
-          workspace: pipeline-workspace          
-      taskRef:
-        name: cleanup
+name: CI Pipeline
 
-    - name: clone
-      workspaces:
-        - name: output
-          workspace: pipeline-workspace          
-      taskRef:
-        name: git-clone
-      params:
-      - name: url
-        value: $(params.repo-url)
-      - name: revision
-        value: $(params.branch)
-      runAfter:
-        - init      
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-    - name: lint
-      taskRef:
-        name: echo
-      params:
-      - name: message
-        value: "Calling ESLint linter..."
-      runAfter:
-        - clone
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-    - name: tests
-      taskRef:
-        name: echo
-      params:
-      - name: message
-        value: "Running unit tests with Jest..."
-      runAfter:
-        - lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: build
-      taskRef:
-        name: echo
-      params:
-      - name: message
-        value: "Building image for $(params.repo-url) ..."
-      runAfter:
-        - tests
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: deploy
-      taskRef:
-        name: echo
-      params:
-      - name: message
-        value: "Deploying $(params.branch) branch of $(params.repo-url) ..."
-      runAfter:
-        - build
+      - name: Install dependencies
+        run: |
+          pip install flake8 nose
 
-tasks:
-    - name: init
-      workspaces:
-        - name: source
-          workspace: pipeline-workspace
-      taskRef:
-        name: cleanup
+      - name: Lint with flake8
+        run: |
+          flake8 .
 
-	- name: lint
-      workspaces:
-        - name: {workspace `name:`}
-          workspace: {`workspace:` reference }
-      taskRef:
-        name: {task name}
-      params:
-      - name: {image goes here}
-        value: {name of image}
-      - name: {args goes here}
-        value: ["{list}","{of}","{arguments}","{here}"]
-
-    - name: lint
-      workspaces:
-        - name: source
-          workspace: pipeline-workspace
-      taskRef:
-        name: eslint
-      params:
-      - name: image
-        value: "node:18-alpine"
-      - name: args
-        value: ["--format", "stylish", "--ext", ".js", "."]
-      runAfter:
-        - clone
-
-    # Note: The remaining tasks are unchanged
-
-    - name: tests
-      workspaces:
-        - name: {name goes here}
-          workspace: {workspace reference goes here}
-      taskRef:
-      ...
-
-    - name: tests
-      ...
-      taskRef:
-        name: {name goes here}
-      ...
-
-    - name: {name goes here}
-      ...
-      params:
-      - name: {name goes here}
-        value: "--verbose --coverage"
-
-    - name: tests
-      workspaces:
-        - name: source
-          workspace: pipeline-workspace
-      taskRef:
-        name: jest
-      params:
-      - name: args
-        value: "--verbose --coverage"
-      runAfter:
-        - lint
+      - name: Run unit tests with nose
+        run: |
+          nosetests
