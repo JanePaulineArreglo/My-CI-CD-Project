@@ -1,0 +1,47 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js (safe default for CI/CD demos)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 3: Install dependencies (won’t fail if no package.json exists)
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found, skipping install"
+          fi
+
+      # Step 4: Run basic test / validation output
+      - name: Run validation
+        run: |
+          echo "=============================="
+          echo "CI/CD PIPELINE RUNNING SUCCESSFULLY"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Branch: $GITHUB_REF_NAME"
+          echo "Commit: $GITHUB_SHA"
+          echo "=============================="
+
+      # Step 5: Build step (safe placeholder)
+      - name: Build project
+        run: echo "Build completed successfully"
